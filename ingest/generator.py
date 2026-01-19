@@ -9,35 +9,44 @@ EVENT_TYPES = [
     "incident_closed",
 ]
 
-STATUSES = ["open", "in_progress", "closed"]
-
-_ACTIVE_INCIDENTS: list[uuid.UUID] = []
+_ACTIVE_INCIDENTS: dict[uuid.UUID, datetime] = {}
 
 MAX_ACTIVE_INCIDENTS = 25
 
+
 def _get_incident_id() -> uuid.UUID:
-  if _ACTIVE_INCIDENTS and random.random() < 0.7:
-    return random.choice(_ACTIVE_INCIDENTS)
-  
-  incident_id = uuid.uuid4()
-  
-  if len(_ACTIVE_INCIDENTS) < MAX_ACTIVE_INCIDENTS:
-    _ACTIVE_INCIDENTS.append(incident_id)
-    
-  return incident_id
+    if _ACTIVE_INCIDENTS and random.random() < 0.7:
+        return random.choice(list(_ACTIVE_INCIDENTS.keys()))
+
+    incident_id = uuid.uuid4()
+
+    if len(_ACTIVE_INCIDENTS) < MAX_ACTIVE_INCIDENTS:
+        _ACTIVE_INCIDENTS[incident_id] = (
+            datetime.now(timezone.utc)
+            - timedelta(minutes=random.randint(1, 60))
+        )
+
+    return incident_id
+
 
 def generate_event():
     incident_id = _get_incident_id()
+    current_time = _ACTIVE_INCIDENTS[incident_id]
 
     event_type = random.choice(EVENT_TYPES)
+
+    event_time = current_time + timedelta(minutes=random.randint(1, 15))
+
+    _ACTIVE_INCIDENTS[incident_id] = event_time
+
     status = (
         "closed"
         if event_type == "incident_closed"
         else random.choice(["open", "in_progress"])
     )
 
-    if status == "closed" and incident_id in _ACTIVE_INCIDENTS:
-        _ACTIVE_INCIDENTS.remove(incident_id)
+    if status == "closed":
+        _ACTIVE_INCIDENTS.pop(incident_id, None)
 
     return {
         "id": uuid.uuid4(),
@@ -47,6 +56,5 @@ def generate_event():
         "event_type": event_type,
         "severity": random.randint(1, 5),
         "status": status,
-        "timestamp": datetime.now(timezone.utc)
-        - timedelta(seconds=random.randint(0, 3600)),
+        "timestamp": event_time,
     }

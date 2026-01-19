@@ -1,0 +1,16 @@
+version: 2
+
+models:
+  - name: stg_events_raw
+    description: Raw staged Sentinel events
+
+  - name: fct_incidents
+    description: One row per incident with lifecycle metrics
+    columns:
+      - name: incident_id
+        tests:
+          - not_null
+          - unique
+      - name: duration
+        tests:
+          - not_null
